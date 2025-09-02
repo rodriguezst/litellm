@@ -567,11 +567,23 @@ class OpenAIChatCompletion(BaseLLM, BaseOpenAILLM):
             ):  # if call fails due to alternating messages, retry with reformatted message
                 try:
                     max_retries = inference_params.pop("max_retries", 2)
+                    
+                    # Validate environment and get headers from provider config
+                    validated_headers = provider_config.validate_environment(
+                        headers=headers or {},
+                        model=model,
+                        messages=messages,
+                        optional_params=inference_params,
+                        litellm_params=litellm_params,
+                        api_key=api_key,
+                        api_base=api_base,
+                    )
+                    
                     if acompletion is True:
                         if stream is True and fake_stream is False:
                             return self.async_streaming(
                                 logging_obj=logging_obj,
-                                headers=headers,
+                                headers=validated_headers,
                                 messages=messages,
                                 optional_params=inference_params,
                                 litellm_params=litellm_params,
@@ -593,7 +605,7 @@ class OpenAIChatCompletion(BaseLLM, BaseOpenAILLM):
                                 optional_params=inference_params,
                                 litellm_params=litellm_params,
                                 provider_config=provider_config,
-                                headers=headers,
+                                headers=validated_headers,
                                 model=model,
                                 logging_obj=logging_obj,
                                 model_response=model_response,
@@ -613,12 +625,12 @@ class OpenAIChatCompletion(BaseLLM, BaseOpenAILLM):
                         messages=messages,
                         optional_params=inference_params,
                         litellm_params=litellm_params,
-                        headers=headers or {},
+                        headers=validated_headers,
                     )
                     if stream is True and fake_stream is False:
                         return self.streaming(
                             logging_obj=logging_obj,
-                            headers=headers,
+                            headers=validated_headers,
                             data=data,
                             model=model,
                             api_base=api_base,
@@ -651,7 +663,7 @@ class OpenAIChatCompletion(BaseLLM, BaseOpenAILLM):
                             input=messages,
                             api_key=openai_client.api_key,
                             additional_args={
-                                "headers": headers,
+                                "headers": validated_headers,
                                 "api_base": openai_client._base_url._uri_reference,
                                 "acompletion": acompletion,
                                 "complete_input_dict": data,

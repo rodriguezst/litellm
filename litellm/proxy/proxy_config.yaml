@@ -1,0 +1,4 @@
+model_list:
+  - model_name: xai/*
+    litellm_params:
+      model: xai/*

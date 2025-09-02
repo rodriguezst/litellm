@@ -108,12 +108,26 @@ class GithubCopilotConfig(OpenAIConfig):
     def _determine_initiator(self, messages: List[AllMessageValues]) -> str:
         """
         Determine if request is user or agent initiated based on message roles.
-        Returns 'agent' if any message has role 'tool' or 'assistant', otherwise 'user'.
+        Returns 'agent' if any message has role 'tool' or 'assistant', or is a user message with tool results (Anthropic format).
+        Otherwise returns 'user'.
         """
         for message in messages:
             role = message.get("role")
+
+            # Check for OpenAI format (role is "tool" or "assistant")
             if role in ["tool", "assistant"]:
                 return "agent"
+
+            # Check for Anthropic format (role is "user" with tool results)
+            if role == "user":
+                content = message.get("content")
+                # Check if content is a list (Anthropic format)
+                if isinstance(content, list):
+                    for content_block in content:
+                        # Check if any content block is a tool result
+                        if isinstance(content_block, dict) and content_block.get("type") == "tool_result":
+                            return "agent"
+
         return "user"
 
     def _has_vision_content(self, messages: List[AllMessageValues]) -> bool:

@@ -4074,6 +4074,45 @@ def completion(  # type: ignore # noqa: PLR0915
                     logging_obj=logging,
                 )
 
+        elif custom_llm_provider == "antigravity":
+            # Antigravity - Google's unified AI gateway for Claude, Gemini, etc.
+            from litellm.llms.antigravity.chat.transformation import AntigravityConfig
+
+            antigravity_config = AntigravityConfig()
+
+            # Get API base (auth is deferred to validate_environment)
+            (
+                api_base,
+                api_key,
+                custom_llm_provider,
+            ) = antigravity_config._get_openai_compatible_provider_info(
+                model=model,
+                api_base=api_base or litellm.api_base,
+                api_key=api_key or litellm.api_key,
+                custom_llm_provider=custom_llm_provider,
+            )
+
+            headers = headers or litellm.headers or {}
+
+            response = base_llm_http_handler.completion(
+                model=model,
+                stream=stream,
+                messages=messages,
+                acompletion=acompletion,
+                api_base=api_base,
+                model_response=model_response,
+                optional_params=optional_params,
+                litellm_params=litellm_params,
+                shared_session=shared_session,
+                custom_llm_provider=custom_llm_provider,
+                timeout=timeout,
+                headers=headers,
+                encoding=_get_encoding(),
+                api_key=api_key,
+                logging_obj=logging,
+                client=client,
+            )
+
         elif custom_llm_provider == "langgraph":
             # LangGraph - Agent Runtime Provider
             from litellm.llms.langgraph.chat.transformation import LangGraphConfig

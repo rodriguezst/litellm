@@ -12,6 +12,7 @@ from litellm._logging import verbose_logger
 from litellm.exceptions import AuthenticationError
 from litellm.llms.base_llm.chat.transformation import BaseConfig
 from litellm.types.llms.openai import AllMessageValues
+from litellm.types.utils import Choices, Message, Usage
 
 from ..authenticator import Authenticator
 from ..common_utils import (
@@ -70,17 +71,16 @@ class AntigravityConfig(BaseConfig):
 
         Returns:
             Tuple of (api_base, api_key, custom_llm_provider)
+
+        Note: This method does NOT trigger OAuth flow. Authentication is deferred
+        to validate_environment() which is called when actual requests are made.
+        This allows the proxy to start without blocking on authentication.
         """
         dynamic_api_base = api_base or self.authenticator.get_api_base() or ANTIGRAVITY_API_BASE
 
-        try:
-            dynamic_api_key = self.authenticator.get_access_token()
-        except AntigravityError as e:
-            raise AuthenticationError(
-                model=model,
-                llm_provider=custom_llm_provider,
-                message=str(e),
-            )
+        # Return placeholder - actual auth happens in validate_environment()
+        # This allows proxy startup without blocking on OAuth
+        dynamic_api_key = "deferred-auth"
 
         return dynamic_api_base, dynamic_api_key, custom_llm_provider
 
@@ -128,8 +128,10 @@ class AntigravityConfig(BaseConfig):
     def get_complete_url(
         self,
         api_base: Optional[str],
+        api_key: Optional[str],
         model: str,
         optional_params: dict,
+        litellm_params: dict,
         stream: Optional[bool] = None,
     ) -> str:
         """
@@ -137,8 +139,10 @@ class AntigravityConfig(BaseConfig):
 
         Args:
             api_base: Base URL for the API.
+            api_key: API key (unused for Antigravity, uses OAuth).
             model: Model name.
             optional_params: Optional parameters.
+            litellm_params: LiteLLM parameters.
             stream: Whether streaming is enabled.
 
         Returns:
@@ -482,7 +486,7 @@ class AntigravityConfig(BaseConfig):
     def transform_response(
         self,
         model: str,
-        raw_response: Dict[str, Any],
+        raw_response: Any,
         model_response: Any,
         logging_obj: Any,
         request_data: Dict[str, Any],
@@ -498,7 +502,7 @@ class AntigravityConfig(BaseConfig):
 
         Args:
             model: Model name.
-            raw_response: Raw API response.
+            raw_response: Raw API response (httpx.Response object).
             model_response: Model response object to populate.
             logging_obj: Logging object.
             request_data: Original request data.
@@ -512,7 +516,13 @@ class AntigravityConfig(BaseConfig):
         Returns:
             Populated model response.
         """
-        inner_response = raw_response.get("response", {})
+        # Parse JSON from httpx.Response
+        try:
+            response_json = raw_response.json()
+        except Exception:
+            response_json = {}
+
+        inner_response = response_json.get("response", {})
         candidates = inner_response.get("candidates", [])
 
         if not candidates:
@@ -541,37 +551,40 @@ class AntigravityConfig(BaseConfig):
                     }
                 })
 
-        # Build message
-        message = {"role": "assistant", "content": text_content if text_content else None}
+        # Build message using LiteLLM Message type
+        message = Message(
+            role="assistant",
+            content=text_content if text_content else None,
+        )
 
         if tool_calls:
-            message["tool_calls"] = tool_calls
+            message.tool_calls = tool_calls
 
         # Map finish reason
         finish_reason = FINISH_REASON_MAP.get(
             candidate.get("finishReason", "STOP"), "stop"
         )
 
-        # Build choice
-        choice = {
-            "index": 0,
-            "message": message,
-            "finish_reason": finish_reason,
-        }
+        # Build choice using LiteLLM Choices type
+        choice = Choices(
+            finish_reason=finish_reason,
+            index=0,
+            message=message,
+        )
 
         model_response.choices = [choice]
 
-        # Extract usage
+        # Extract usage using LiteLLM Usage type
         usage_metadata = inner_response.get("usageMetadata", {})
-        model_response.usage = {
-            "prompt_tokens": usage_metadata.get("promptTokenCount", 0),
-            "completion_tokens": usage_metadata.get("candidatesTokenCount", 0),
-            "total_tokens": usage_metadata.get("totalTokenCount", 0),
-        }
+        model_response.usage = Usage(
+            prompt_tokens=usage_metadata.get("promptTokenCount", 0),
+            completion_tokens=usage_metadata.get("candidatesTokenCount", 0),
+            total_tokens=usage_metadata.get("totalTokenCount", 0),
+        )
 
         # Add thinking tokens if present
         if "thoughtsTokenCount" in usage_metadata:
-            model_response.usage["reasoning_tokens"] = usage_metadata["thoughtsTokenCount"]
+            model_response.usage.reasoning_tokens = usage_metadata["thoughtsTokenCount"]
 
         # Set model info
         model_response.model = inner_response.get("modelVersion", model)

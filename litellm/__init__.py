@@ -1305,6 +1305,7 @@ if TYPE_CHECKING:
     from .llms.nlp_cloud.chat.handler import NLPCloudConfig as NLPCloudConfig
     from .llms.vertex_ai.gemini.vertex_and_google_ai_studio_gemini import VertexGeminiConfig as VertexGeminiConfig
     from .llms.gemini.chat.transformation import GoogleAIStudioGeminiConfig as GoogleAIStudioGeminiConfig
+    from .llms.antigravity.chat.transformation import AntigravityConfig as AntigravityConfig
     from .llms.vertex_ai.vertex_ai_partner_models.anthropic.transformation import VertexAIAnthropicConfig as VertexAIAnthropicConfig
     from .llms.vertex_ai.vertex_ai_partner_models.llama3.transformation import VertexAILlama3Config as VertexAILlama3Config
     from .llms.vertex_ai.vertex_ai_partner_models.ai21.transformation import VertexAIAi21Config as VertexAIAi21Config

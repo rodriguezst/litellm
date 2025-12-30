@@ -3023,6 +3023,7 @@ class LlmProviders(str, Enum):
     NANOGPT = "nano-gpt"
     POE = "poe"
     CHUTES = "chutes"
+    ANTIGRAVITY = "antigravity"
 
 
 

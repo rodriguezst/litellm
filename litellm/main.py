@@ -3343,6 +3343,37 @@ def completion(  # type: ignore # noqa: PLR0915
                     )
                     return response
             response = model_response
+        elif custom_llm_provider == "antigravity":
+            # Antigravity - Google's Unified Gateway API for Claude, Gemini, GPT-OSS
+            api_key = (
+                api_key
+                or get_api_key_from_env()
+                or get_secret("ANTIGRAVITY_API_KEY")
+                or litellm.api_key
+            )
+            api_base = (
+                api_base
+                or litellm.api_base
+                or get_secret("ANTIGRAVITY_API_BASE")
+            )
+
+            response = base_llm_http_handler.completion(
+                model=model,
+                stream=stream,
+                messages=messages,
+                acompletion=acompletion,
+                api_base=api_base,
+                api_key=api_key,
+                model_response=model_response,
+                optional_params=optional_params,
+                litellm_params=litellm_params,
+                custom_llm_provider="antigravity",
+                timeout=timeout,
+                headers=headers or {},
+                logging_obj=logging,
+                client=client,
+                encoding=_get_encoding(),
+            )
         elif custom_llm_provider == "predibase":
             tenant_id = (
                 optional_params.pop("tenant_id", None)

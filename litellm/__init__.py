@@ -553,6 +553,7 @@ docker_model_runner_models: Set = set()
 amazon_nova_models: Set = set()
 stability_models: Set = set()
 github_copilot_models: Set = set()
+antigravity_models: Set = set()
 
 
 def is_bedrock_pricing_only_model(key: str) -> bool:
@@ -1005,6 +1006,7 @@ models_by_provider: dict = {
     "amazon_nova": amazon_nova_models,
     "stability": stability_models,
     "github_copilot": github_copilot_models,
+    "antigravity": antigravity_models,
 }
 
 # mapping for those models which have larger equivalents
@@ -1432,6 +1434,7 @@ if TYPE_CHECKING:
     from .llms.github_copilot.chat.transformation import GithubCopilotConfig as GithubCopilotConfig
     from .llms.github_copilot.responses.transformation import GithubCopilotResponsesAPIConfig as GithubCopilotResponsesAPIConfig
     from .llms.github_copilot.embedding.transformation import GithubCopilotEmbeddingConfig as GithubCopilotEmbeddingConfig
+    from .llms.antigravity.chat.transformation import AntigravityConfig as AntigravityConfig
     from .llms.nebius.chat.transformation import NebiusConfig as NebiusConfig
     from .llms.wandb.chat.transformation import WandbConfig as WandbConfig
     from .llms.dashscope.chat.transformation import DashScopeChatConfig as DashScopeChatConfig

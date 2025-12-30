@@ -368,8 +368,12 @@ class AntigravityConfig(BaseConfig):
                         parts.append({"text": item})
 
             # Handle tool calls in assistant messages
+            # When assistant has tool_calls, content should be None or empty
+            # and we should only include functionCall parts
             if role == "assistant" and "tool_calls" in message:
                 tool_calls = message.get("tool_calls", [])
+                # Clear any existing text content when there are tool calls
+                parts = []
                 for tool_call in tool_calls:
                     if tool_call.get("type") == "function":
                         func = tool_call.get("function", {})
@@ -712,7 +716,11 @@ class AntigravityConfig(BaseConfig):
             }
 
             if tool_calls:
-                message_dict["tool_calls"] = [tc.model_dump() for tc in tool_calls]
+                # tool_calls may be Pydantic objects or already-serialized dicts
+                message_dict["tool_calls"] = [
+                    tc.model_dump() if hasattr(tc, "model_dump") else tc
+                    for tc in tool_calls
+                ]
 
             # Add thinking blocks if present (for Claude thinking models)
             if thinking_blocks and self._is_claude_model(model):

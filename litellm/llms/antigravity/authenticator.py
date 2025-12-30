@@ -504,6 +504,7 @@ class AntigravityAuthenticator:
         Discover project ID via loadCodeAssist API.
 
         Tries multiple Antigravity endpoints in order.
+        Matches the exact request/response format from the reference implementation.
         """
         headers = {
             "Authorization": f"Bearer {access_token}",
@@ -517,6 +518,15 @@ class AntigravityAuthenticator:
             }),
         }
 
+        # Request body matches reference implementation
+        request_body = {
+            "metadata": {
+                "ideType": "IDE_UNSPECIFIED",
+                "platform": "PLATFORM_UNSPECIFIED",
+                "pluginType": "GEMINI",
+            },
+        }
+
         sync_client = _get_httpx_client()
 
         for endpoint in ANTIGRAVITY_ENDPOINTS:
@@ -524,13 +534,27 @@ class AntigravityAuthenticator:
                 response = sync_client.post(
                     f"{endpoint}/v1internal:loadCodeAssist",
                     headers=headers,
-                    json={},
+                    json=request_body,
                     timeout=10,
                 )
 
                 if response.status_code == 200:
                     data = response.json()
-                    project_id = data.get("projectId") or data.get("managedProjectId")
+
+                    # Extract project ID - matching reference implementation
+                    # Reference checks: cloudaicompanionProject (string or object with .id)
+                    project_id = None
+
+                    cloud_project = data.get("cloudaicompanionProject")
+                    if isinstance(cloud_project, str) and cloud_project:
+                        project_id = cloud_project
+                    elif isinstance(cloud_project, dict) and cloud_project.get("id"):
+                        project_id = cloud_project["id"]
+
+                    # Fallback to other field names if present
+                    if not project_id:
+                        project_id = data.get("projectId") or data.get("managedProjectId")
+
                     if project_id:
                         verbose_logger.info(f"Discovered project ID: {project_id}")
                         return project_id
